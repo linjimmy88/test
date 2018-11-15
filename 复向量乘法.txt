@@ -9,17 +9,17 @@ vmla.f64 d17, d0, d9
 vmls.f64 d16, d1, d9
 vmla.f64 d17, d1, d8
 
-  vmla.f64 d18, d2, d10
+vmla.f64 d18, d2, d10
 vmla.f64 d19, d2, d11
 vmls.f64 d18, d3, d11
 vmla.f64 d19, d3, d10
 
-  vmla.f64 d20, d4, d12
+vmla.f64 d20, d4, d12
 vmla.f64 d21, d4, d13
 vmls.f64 d20, d5, d13
 vmla.f64 d21, d5, d12
 
-  vmla.f64 d22, d6, d14
+vmla.f64 d22, d6, d14
 vmla.f64 d23, d6, d15
 vmls.f64 d22, d7, d15
 vmla.f64 d23, d7, d14
