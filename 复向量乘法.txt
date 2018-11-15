@@ -1,29 +1,42 @@
 .align 4
-.global neon_instr_seq_22
+.global neon_instr_seq_35
 .arm
-neon_instr_seq_22:
-LDR r0, =16384
-neon_instr_seq_22_loop:
-vldm r0, {d0-d7}
+neon_instr_seq_35:
+LDR r3, =16384
+neon_instr_seq_35_loop:
+vldr d0, [r0, #0]
 vldm r1, {d8-d15}
 
 vmla.f64 d16, d0, d8
+vldr d2, [r0, #16]
 vmla.f64 d17, d0, d9
+
+vldr d4, [r0, #32]
 vmla.f64 d18, d2, d10
 vmla.f64 d19, d2, d11
+
+vldr d6, [r0, #48]
 vmla.f64 d16, d4, d12
 vmla.f64 d17, d4, d13
+
+vldr d1, [r0, #8]
 vmla.f64 d18, d6, d14
 vmla.f64 d19, d6, d15
 
+vldr d3, [r0, #24]
 vmls.f64 d16, d1, d9
 vmla.f64 d17, d1, d8
+
+vldr d5, [r0, #40]
 vmls.f64 d18, d3, d11
 vmla.f64 d19, d3, d10
+
+vldr d7, [r0, #56]
 vmls.f64 d16, d5, d13
 vmla.f64 d17, d5, d12
+
 vmls.f64 d18, d7, d15
 vmla.f64 d19, d7, d14
-SUBS r0, r0, #1
-BNE neon_instr_seq_22_loop
+SUBS r3, r3, #1
+BNE neon_instr_seq_35_loop
 bx lr
