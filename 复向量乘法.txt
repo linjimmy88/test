@@ -4,6 +4,9 @@
 neon_instr_seq_22:
 LDR r0, =16384
 neon_instr_seq_22_loop:
+vldm r0, {d0-d7}
+vldm r1, {d8-d15}
+
 vmla.f64 d16, d0, d8
 vmla.f64 d17, d0, d9
 vmla.f64 d18, d2, d10
