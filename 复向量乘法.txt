@@ -1,12 +1,13 @@
-double a[N*2] ;
-double b[N*2] ;
-double result_golden[2] = {0.0, 0.0};
-
-int i;
-result_golden[0]=0.0;
-result_golden[1]=0.0;
-for(i = 0; i < 4096; i++)
-{
-result_golden[0] += a[2 * i] * b[2 * i] - a[2 * i + 1] * b[2 * i + 1];
-result_golden[1] += a[2 * i + 1] * b[2 * i] + a[2 * i] * b[2 * i + 1];
-}
+.align 4
+.global neon_instr_seq_0
+.arm
+neon_instr_seq_0:
+LDR r0, =16384
+neon_instr_seq_0_loop:
+vmla.f64 d8, d0, d4
+vmla.f64 d9, d1, d5
+vmla.f64 d10, d2, d6
+vmla.f64 d11, d3, d7
+SUBS r0, r0, #1
+BNE neon_instr_seq_0_loop
+bx lr
