@@ -1,11 +1,28 @@
 .align 4
-.global neon_instr_seq_35
+.global complex_dot_product_neon_var4
 .arm
-neon_instr_seq_35:
-LDR r3, =16384
-neon_instr_seq_35_loop:
+complex_dot_product_neon_var4:
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@ r0: address of source vector a
+@ r1: address of source vector b
+@ r2: address of destination complex
+@ r3: vector length
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+vmov.i32 d16, #0
+vmov.i32 d17, #0
+vmov.i32 d18, #0
+vmov.i32 d19, #0
+
+loop_var4:
+
 vldr d0, [r0, #0]
-vldm r1, {d8-d15}
+vldm r1!, {d8-d15}
+
+pld [r0, #64]
+pld [r0, #96]
+pld [r1, #64]
+pld [r1, #96]
 
 vmla.f64 d16, d0, d8
 vldr d2, [r0, #16]
@@ -37,6 +54,13 @@ vmla.f64 d17, d5, d12
 
 vmls.f64 d18, d7, d15
 vmla.f64 d19, d7, d14
-SUBS r3, r3, #1
-BNE neon_instr_seq_35_loop
+
+add r0, r0, #64
+SUBS r3, r3, #4
+BNE loop_var4
+
+vadd.f64 d16, d16, d18
+vadd.f64 d17, d17, d19
+
+vstm r2!, {d16-d17}
 bx lr
