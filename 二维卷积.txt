@@ -1,37 +1,74 @@
-bool convolve2DSlow(unsigned char* in, unsigned char* out, int dataSizeX, int dataSizeY,
-                    float* kernel, int kernelSizeX, int kernelSizeY)
+int convolve2D_neon(unsigned char * src,unsigned char * dst,int datasizeX,int datasizeY,float* kernel,int kernelSizeX,int kernelSizeY)
 {
-    int i, j, m, n, mm, nn;
-    int kCenterX, kCenterY;                         // center index of kernel
-    float sum;                                      // temp accumulation buffer
-    int rowIndex, colIndex;
-    // check validity of params
-    if(!in || !out || !kernel) return false;
-    if(dataSizeX <= 0 || kernelSizeX <= 0) return false;
-    // find center position of kernel (half of kernel size)
-    kCenterX = kernelSizeX / 2;
-    kCenterY = kernelSizeY / 2;
-    for(i=0; i < dataSizeY; ++i)                // rows
+
+    if(!dst || !src || !kernel) return -1;
+    if(datasizeX <= 0 || kernelSizeX <= 0) return -1;
+    int x,y,kx,ky,k,mm,nn,yIndex,xIndex;
+    //float k_num;
+    float32x4_t k_neon;    
+    uint8x8_t    neon_x_u8;
+    uint16x8_t    neon_x_u16_8;
+    uint16x4_t    neon_x_u16_4;
+    uint16x4_t    neon_x_u16_4_2;
+    uint32x4_t    neon_x_u32;
+    float32x4_t    neon_x_f32;
+    float32x4_t neon_sum_f32_high;
+    float32x4_t neon_sum_f32_low;
+    int kCenterX, kCenterY;
+
+    kCenterX = kernelSizeX >> 1;
+    kCenterY = kernelSizeY >> 1;
+    k=datasizeX%8;
+    if(k)
+        k=8-k;
+    unsigned char* in=(unsigned char * )malloc((datasizeX+2*kCenterX+k)*(datasizeY+2*kCenterY));    //扩展，避免边界和剩余
+    int strde=datasizeX+2*kCenterX+k;//in的步长
+    memset(in,0,sizeof(in));
+    for(y=0;y<datasizeY;y++)
     {
-        for(j=0; j < dataSizeX; ++j)            // columns
+        for(x=0;x<datasizeX;x++)
+            in[(y+kCenterY)*(strde)+x+kCenterX]=src[y*datasizeX+x];    
+    }
+    for(y=0;y<datasizeY;y++)
+    {
+        for(x=0;x<datasizeX;x=x+8)
         {
-            sum = 0;                            // init to 0 before sum
-            for(m=0; m < kernelSizeY; ++m)      // kernel rows
+            neon_sum_f32_high=vdupq_n_f32(0);
+            neon_sum_f32_low =vdupq_n_f32(0);
+            for(ky=0;ky<kernelSizeY;ky++)        // kernel rows
             {
-                mm = kernelSizeY - 1 - m;       // row index of flipped kernel
-                for(n=0; n < kernelSizeX; ++n)  // kernel columns
+                mm = kernelSizeY - 1 - ky;        // row index of flipped kernel
+                for(kx=0; kx < kernelSizeX; ++kx)  // kernel columns
                 {
-                    nn = kernelSizeX - 1 - n;   // column index of flipped kernel
-                    // index of input signal, used for checking boundary
-                    rowIndex = i + m - kCenterY;
-                    colIndex = j + n - kCenterX;
-                    // ignore input samples which are out of bound
-                    if(rowIndex >= 0 && rowIndex < dataSizeY && colIndex >= 0 && colIndex < dataSizeX)
-                        sum += in[dataSizeX * rowIndex + colIndex] * kernel[kernelSizeX * mm + nn];
+                    nn = kernelSizeX - 1 - kx;   // column index of flipped kernel                    
+                    yIndex = y + ky;
+                    xIndex = x + kx;
+
+                    neon_x_u8=vld1_u8(in+yIndex*(strde)+xIndex);    //加载8个8位数据
+                    neon_x_u16_8=vmovl_u8(neon_x_u8);
+                    k_neon=vld1q_dup_f32(kernel+kernelSizeX * mm + nn);//加载kernel[kernelSizeX * mm + nn]
+                    /*处理低位的4个数据*/
+                    neon_x_u16_4=vget_low_u16(neon_x_u16_8);                
+                    neon_x_u32 = vmovl_u16(neon_x_u16_4);    //将16位扩展为32位
+                    neon_x_f32 = vcvtq_f32_u32(neon_x_u32);//转化为float32        
+                    neon_sum_f32_low=vmlaq_f32(neon_sum_f32_low,neon_x_f32,k_neon);//sum=sum+neon_x*k_neon
+                    /*处理高位4个数据*/
+                    neon_x_u16_4=vget_high_u16(neon_x_u16_8);
+                    neon_x_u32 = vmovl_u16(neon_x_u16_4);    //将16位扩展为32位
+                    neon_x_f32 = vcvtq_f32_u32(neon_x_u32);//转化为float32
+                    neon_sum_f32_high=vmlaq_f32(neon_sum_f32_high,neon_x_f32,k_neon);//sum=sum+neon_x*k_neon
                 }
             }
-            out[dataSizeX * i + j] = (unsigned char)((float)fabs(sum) + 0.5f);
+            neon_x_u32=vcvtq_u32_f32(neon_sum_f32_low);    //将float32*4*2转为uint8*8
+            neon_x_u16_4=vqmovn_u32(neon_x_u32);
+            neon_x_u32=vcvtq_u32_f32(neon_sum_f32_high);
+            neon_x_u16_4_2=vqmovn_u32(neon_x_u32);
+            neon_x_u16_8=vcombine_u16(neon_x_u16_4,neon_x_u16_4_2);
+            neon_x_u8=vqmovn_u16(neon_x_u16_8);
+            vst1_u8(dst+y*datasizeX+x,neon_x_u8);    //存储        
         }
     }
-    return true;
+    free(in);
+    in=NULL;
+    return 0;
 }
